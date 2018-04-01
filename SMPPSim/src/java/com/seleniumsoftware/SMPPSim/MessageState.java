@@ -34,8 +34,7 @@ import java.util.*;
 import java.util.logging.*;
 
 public class MessageState {
-	private static Logger logger = Logger
-			.getLogger("com.seleniumsoftware.smppsim");
+	private static Logger logger = Logger.getLogger("com.seleniumsoftware.smppsim");
 
 	// key
 	private String message_id;
@@ -51,7 +50,7 @@ public class MessageState {
 
 	// other attributes
 	private byte state;
-	
+
 	private int err;
 
 	private boolean responseSent = false;
@@ -66,6 +65,14 @@ public class MessageState {
 
 	private boolean intermediate_notification_requested = false;
 
+	private String service_type = null;
+
+	private int dest_addr_ton;
+
+	private int dest_addr_npi;
+
+	private String dest_addr;
+
 	public MessageState() {
 	}
 
@@ -75,6 +82,7 @@ public class MessageState {
 		source_addr_npi = pdu.getSource_addr_npi();
 		source_addr = pdu.getSource_addr();
 		this.pdu = pdu;
+	
 		// All messages start with state ENROUTE
 		state = PduConstants.ENROUTE;
 		byte rd = (byte) pdu.getRegistered_delivery_flag();
@@ -85,39 +93,62 @@ public class MessageState {
 			if (!pdu.getValidity_period().equals(""))
 				validity_period = new SmppTime(pdu.getValidity_period());
 			else {
-				logger
-						.info("Validity period is not set: defaulting to 5 minutes from now");
+				logger.info("Validity period is not set: defaulting to 5 minutes from now");
 				long now = System.currentTimeMillis() + 300000;
 				String st = SmppTime.dateToSMPPString(new Date(now));
 				validity_period = new SmppTime(st);
 				logger.info("Generated default validity period=" + st);
 			}
 		} catch (ParseException e) {
-			logger
-					.warning("Could not parse validity period : using default of 5 minutes");
+			logger.warning("Could not parse validity period : using default of 5 minutes");
 			long vtime = System.currentTimeMillis() + 300000;
 			Date vdate = new Date(vtime);
 			try {
 				validity_period = new SmppTime(SmppTime.dateToSMPPString(vdate));
 			} catch (ParseException e2) {
-				logger
-						.severe("Internal error: could not set default validity period due to parse error");
+				logger.severe("Internal error: could not set default validity period due to parse error");
 			}
 		}
 	}
 
 	public boolean equals(Object other) {
-//		logger.info("MessageState.equals:"+other.getClass().getName());
+		// logger.info("MessageState.equals:"+other.getClass().getName());
 		if (other instanceof MessageState) {
 			MessageState ms = (MessageState) other;
-//			logger.info("MessageState equality1:" + this.keyToString());
-//			logger.info("MessageState equality2:" + ms.keyToString());
-			if (ms.getMessage_id().equals(message_id)
-					&& ms.getSource_addr_ton() == source_addr_ton
-					&& ms.getSource_addr_npi() == source_addr_npi
-					&& ms.getSource_addr().equals(source_addr))
-				return true;
+			// logger.info(ms.toString());
+
+			// logger.info("MessageState equality1:" + this.keyToString());
+			// logger.info("MessageState equality2:" + ms.keyToString());
+			if (ms.getMessage_id() != null) {
+				// logger.info("id is nor null equality");
+				if (ms.getMessage_id().equals(message_id) && ms.getSource_addr_ton() == source_addr_ton
+						&& ms.getSource_addr_npi() == source_addr_npi && ms.getSource_addr().equals(source_addr))
+					return true;
+			} else {
+				// logger.info("id is null, replace if present flag equality");
+
+				if (ms.getDest_addr().equals(dest_addr) && ms.getDest_addr_npi() == dest_addr_npi
+						&& ms.getDest_addr_ton() == dest_addr_ton && ms.getService_type().equals(service_type))
+					return true;
+			}
 		}
+		return false;
+	}
+
+	public boolean isEqual(Object other) {
+		if (other instanceof MessageState) {
+			MessageState ms = (MessageState) other;
+
+			if (ms.getService_type() != null) {
+				// logger.info("id is nor null equality");
+				if (ms.getService_type().equals(service_type) && ms.getSource_addr_ton() == source_addr_ton
+						&& ms.getSource_addr_npi() == source_addr_npi && ms.getSource_addr().equals(source_addr)
+						&& ms.getDest_addr().equals(dest_addr) && ms.getDest_addr_npi() == dest_addr_npi
+						&& ms.getDest_addr_ton() == dest_addr_ton)
+					return true;
+			}
+		}
+
 		return false;
 	}
 
@@ -133,6 +164,13 @@ public class MessageState {
 			h = h + bytearray[i] * 31 ^ (l - (i + 1));
 		}
 		return h;
+	}
+
+	/**
+	 * @return
+	 */
+	public String getService_type() {
+		return service_type;
 	}
 
 	/**
@@ -168,6 +206,13 @@ public class MessageState {
 	 */
 	public byte getState() {
 		return state;
+	}
+
+	/**
+	 * @param string
+	 */
+	public void setService_type(String string) {
+		service_type = string;
 	}
 
 	/**
@@ -248,18 +293,15 @@ public class MessageState {
 	}
 
 	public String toString() {
-		return "message_id=" + message_id + "," + "source_addr_ton="
-				+ source_addr_ton + "," + "source_addr_npi=" + source_addr_npi
-				+ "," + "source_addr=" + source_addr + "," + "PDU=" + pdu + ","
-				+ "state=" + state + "," + "submit_time=" + submit_time + ","
-				+ "final_time=" + final_time + "," + "finalDate=" + finalDate
+		return "message_id=" + message_id + "," + "source_addr_ton=" + source_addr_ton + "," + "source_addr_npi="
+				+ source_addr_npi + "," + "source_addr=" + source_addr + "," + "PDU=" + pdu + "," + "state=" + state
+				+ "," + "submit_time=" + submit_time + "," + "final_time=" + final_time + "," + "finalDate=" + finalDate
 				+ "," + "validity_period=" + validity_period;
 	}
 
 	public String keyToString() {
-		return "message_id=" + message_id + "," + "source_addr_ton="
-				+ source_addr_ton + "," + "source_addr_npi=" + source_addr_npi
-				+ "," + "source_addr=" + source_addr;
+		return "message_id=" + message_id + "," + "source_addr_ton=" + source_addr_ton + "," + "source_addr_npi="
+				+ source_addr_npi + "," + "source_addr=" + source_addr;
 	}
 
 	public long getFinal_time() {
@@ -305,8 +347,7 @@ public class MessageState {
 		return intermediate_notification_requested;
 	}
 
-	public void setIntermediate_notification_requested(
-			boolean intermediate_notification_requested) {
+	public void setIntermediate_notification_requested(boolean intermediate_notification_requested) {
 		this.intermediate_notification_requested = intermediate_notification_requested;
 	}
 
@@ -316,6 +357,30 @@ public class MessageState {
 
 	public void setErr(int err) {
 		this.err = err;
+	}
+
+	public int getDest_addr_ton() {
+		return dest_addr_ton;
+	}
+
+	public void setDest_addr_ton(int dest_addr_ton) {
+		this.dest_addr_ton = dest_addr_ton;
+	}
+
+	public int getDest_addr_npi() {
+		return dest_addr_npi;
+	}
+
+	public void setDest_addr_npi(int dest_addr_npi) {
+		this.dest_addr_npi = dest_addr_npi;
+	}
+
+	public String getDest_addr() {
+		return dest_addr;
+	}
+
+	public void setDest_addr(String dest_addr) {
+		this.dest_addr = dest_addr;
 	}
 
 }

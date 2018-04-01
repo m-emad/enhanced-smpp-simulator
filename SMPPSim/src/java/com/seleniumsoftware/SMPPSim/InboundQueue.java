@@ -67,7 +67,9 @@ public class InboundQueue implements Runnable {
 		synchronized (inbound_queue) {
 			if (inbound_queue.size() >= smsc.getInbound_queue_capacity())
 				throw new InboundQueueFullException();
-			logger.finest("InboundQueue: adding object to queue<" + message.toString() + ">");
+		//	logger.finest("InboundQueue: adding object to queue<" + message.toString() + ">");
+			logger.finest("InboundQueue: adding object to queue<" + ">");
+
 			inbound_queue.add(message);
 			logger.finest("InboundQueue: now contains " + inbound_queue.size() + " object(s)");
 			inbound_queue.notifyAll();
@@ -80,12 +82,21 @@ public class InboundQueue implements Runnable {
 			for (int i = 0; i < response_queue.size(); i++) {
 				Pdu pdu = response_queue.get(i);
 				if (pdu.getSeq_no() == seqno) {
-					if (command_status == PduConstants.ESME_RMSGQFUL) {
+					if(command_status == PduConstants.ESME_ROK){
+						diqueue.deliveredOK(pdu);
+					}else{
+						logger.info("MO message " + seqno + " was rejected with other reasons so putting in delayed inbound queue for retry");
+						diqueue.retryLater(pdu);
+					}
+				/*	if (command_status == PduConstants.ESME_RMSGQFUL) {
 						logger.info("MO message " + seqno + " was rejected with queue full so putting in delayed inbound queue for retry");
 						diqueue.retryLater(pdu);
-					} else {
+					} else if(command_status == PduConstants.ESME_ROK){
 						diqueue.deliveredOK(pdu);
-					}
+					}else{
+						logger.info("MO message " + seqno + " was rejected with other reasons so putting in delayed inbound queue for retry");
+						diqueue.retryLater(pdu);
+					}*/
 					response_queue.remove(i);
 					break;
 				}
@@ -101,14 +112,18 @@ public class InboundQueue implements Runnable {
 	public void removeMessage(Pdu m, ArrayList<Pdu> queue) {
 		logger.finest("Removing PDU from queue. Queue currently contains:" + queue.size());
 		for (int i = 0; i < queue.size(); i++) {
-			logger.finest(((Pdu) queue.get(i)).toString());
+			//logger.finest(((Pdu) queue.get(i)).toString());
+			//logger.finest(((Pdu) queue.get(i)).toString());
+
 		}
 		synchronized (queue) {
 			int i = queue.indexOf(m);
 			if (i > -1) {
 				queue.remove(i);
 			} else {
-				logger.warning("Attempt to remove non-existent object from InboundQueue: " + m.toString());
+				//logger.warning("Attempt to remove non-existent object from InboundQueue: " + m.toString());
+				logger.warning("Attempt to remove non-existent object from InboundQueue: ");
+
 			}
 		}
 		logger.finest("Queue now contains:" + queue.size());
@@ -286,7 +301,7 @@ public class InboundQueue implements Runnable {
 				}
 			} else {
 				try {
-					smsc.writeDecodedSmppsim(pdu.toString());
+					//smsc.writeDecodedSmppsim(pdu.toString());
 					receiver.writeResponse(message);
 					/**
 					 * Should only remove from the queue if we didn't get a response of ESME_RMSGQFUL
@@ -332,7 +347,7 @@ public class InboundQueue implements Runnable {
 				}
 			} else {
 				try {
-					smsc.writeDecodedSmppsim(pdu.toString());
+					//smsc.writeDecodedSmppsim(pdu.toString());
 					receiver.writeResponse(message);
 					removeMessage(pdu);
 					smsc.incDataSmOK();

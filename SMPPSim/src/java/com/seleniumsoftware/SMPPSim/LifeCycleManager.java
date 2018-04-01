@@ -98,9 +98,11 @@ public class LifeCycleManager {
 			} else if (stateChoice < acceptedThreshold) {
 				m.setState(PduConstants.ACCEPTED);
 				logger.finest("State set to ACCEPTED");
-			} else {
+			} else if(stateChoice < rejectedThreshold){
 				m.setState(PduConstants.REJECTED);
 				logger.finest("State set to REJECTED");
+			}else{
+				m.setState(PduConstants.EXPIRED);
 			}
 		}
 		if (isTerminalState(m.getState())) {
@@ -172,9 +174,9 @@ public class LifeCycleManager {
 		long now = System.currentTimeMillis();
 		long age = now - m.getSubmit_time();
 		if (isTerminalState(m.getState())) {
-			if (age > discardThreshold)
+			if (age > discardThreshold){
 				return true;
-		}
+		}}
 		return false;
 	}
 

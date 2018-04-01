@@ -111,6 +111,47 @@ public class SMPPSim {
 
 	private static int percentageRejected;
 
+	private static int percentageSubmitFailed;
+
+	private static int percentageSubmitSuccess;
+
+	private static int percentageReplaceSysErr;	
+
+	private static int percentageReplaceSuccess;
+
+	public static int getPercentageSubmitFailed() {
+		return percentageSubmitFailed;
+	}
+
+	public static void setPercentageSubmitFailed(int percentageSubmitFailed) {
+		SMPPSim.percentageSubmitFailed = percentageSubmitFailed;
+	}
+
+	public static int getPercentageSubmitSuccess() {
+		return percentageSubmitSuccess;
+	}
+
+	public static void setPercentageSubmitSuccess(int percentageSubmitSuccess) {
+		SMPPSim.percentageSubmitSuccess = percentageSubmitSuccess;
+	}
+
+
+	public static int getPercentageReplaceSysErr() {
+		return percentageReplaceSysErr;
+	}
+
+	public static void setPercentageReplaceSysErr(int percentageReplaceSysErr) {
+		SMPPSim.percentageReplaceSysErr = percentageReplaceSysErr;
+	}
+
+	public static int getPercentageReplaceSuccess() {
+		return percentageReplaceSuccess;
+	}
+
+	public static void setPercentageReplaceSuccess(int percentageReplaceSuccess) {
+		SMPPSim.percentageReplaceSuccess = percentageReplaceSuccess;
+	}
+
 	private static int discardFromQueueAfter;
 
 	private static long delayReceiptsBy;
@@ -171,11 +212,13 @@ public class SMPPSim {
 	// USSD
 	private static boolean deliver_sm_includes_ussd_service_op = false;
 
-	private static int[] messageTypes = { PduConstants.BIND_RECEIVER, PduConstants.BIND_RECEIVER_RESP, PduConstants.BIND_TRANSMITTER,
-			PduConstants.BIND_TRANSMITTER_RESP, PduConstants.BIND_TRANSCEIVER, PduConstants.BIND_TRANSCEIVER_RESP, PduConstants.OUTBIND, PduConstants.UNBIND,
-			PduConstants.UNBIND_RESP, PduConstants.SUBMIT_SM, PduConstants.SUBMIT_SM_RESP, PduConstants.DELIVER_SM, PduConstants.DELIVER_SM_RESP,
-			PduConstants.QUERY_SM, PduConstants.QUERY_SM_RESP, PduConstants.CANCEL_SM, PduConstants.CANCEL_SM_RESP, PduConstants.REPLACE_SM,
-			PduConstants.REPLACE_SM_RESP, PduConstants.ENQUIRE_LINK, PduConstants.ENQUIRE_LINK_RESP, PduConstants.SUBMIT_MULTI, PduConstants.SUBMIT_MULTI_RESP,
+	private static int[] messageTypes = { PduConstants.BIND_RECEIVER, PduConstants.BIND_RECEIVER_RESP,
+			PduConstants.BIND_TRANSMITTER, PduConstants.BIND_TRANSMITTER_RESP, PduConstants.BIND_TRANSCEIVER,
+			PduConstants.BIND_TRANSCEIVER_RESP, PduConstants.OUTBIND, PduConstants.UNBIND, PduConstants.UNBIND_RESP,
+			PduConstants.SUBMIT_SM, PduConstants.SUBMIT_SM_RESP, PduConstants.DELIVER_SM, PduConstants.DELIVER_SM_RESP,
+			PduConstants.QUERY_SM, PduConstants.QUERY_SM_RESP, PduConstants.CANCEL_SM, PduConstants.CANCEL_SM_RESP,
+			PduConstants.REPLACE_SM, PduConstants.REPLACE_SM_RESP, PduConstants.ENQUIRE_LINK,
+			PduConstants.ENQUIRE_LINK_RESP, PduConstants.SUBMIT_MULTI, PduConstants.SUBMIT_MULTI_RESP,
 			PduConstants.GENERIC_NAK };
 
 	// PDU Capture
@@ -205,8 +248,22 @@ public class SMPPSim {
 
 	private static byte[] dlr_tlv_value;
 
+	private static double replaceSysErrThreshold;
+	private static double replaceSuccessThreshold;
+	
+	private static double submitFailedThreshold;
+	private static double submitSuccessThreshold;
+
+	public static double getReplaceSysErrThreshold() {
+		return replaceSysErrThreshold;
+	}
+
+	public static void setReplaceSysErrThreshold(double replaceSysErrThreshold) {
+		SMPPSim.replaceSysErrThreshold = replaceSysErrThreshold;
+	}
+
 	public static void main(String args[]) throws Exception {
-		System.out.println("SMPPSim is starting....");
+		System.out.println("Edafa SMPPSim is starting....");
 		if ((args == null) || (args.length != 1)) {
 			showUsage();
 			return;
@@ -245,10 +302,12 @@ public class SMPPSim {
 	private static void showUsage() {
 		System.out.println("Invalid or missing arguments:");
 		System.out.println("Usage:");
-		System.out.println("java -Djava.util.logging.config.file=<logging.properties file> com/seleniumsoftware/SMPPSim/SMPPSim <properties file>");
+		System.out.println(
+				"java -Djava.util.logging.config.file=<logging.properties file> com/seleniumsoftware/SMPPSim/SMPPSim <properties file>");
 		System.out.println("");
 		System.out.println("Example:");
-		System.out.println("java -Djava.util.logging.config.file=conf\\logging.properties com/seleniumsoftware/SMPPSim/SMPPSim conf\\props.win");
+		System.out.println(
+				"java -Djava.util.logging.config.file=conf\\logging.properties com/seleniumsoftware/SMPPSim/SMPPSim conf\\props.win");
 		System.out.println("");
 		System.out.println("Run terminated");
 	}
@@ -303,10 +362,12 @@ public class SMPPSim {
 
 		setEsme_to_esme(Boolean.valueOf(props.getProperty("ESME_TO_ESME")).booleanValue());
 
-		simulate_variable_submit_sm_response_times = Boolean.valueOf(props.getProperty("SIMULATE_VARIABLE_SUBMIT_SM_RESPONSE_TIMES")).booleanValue();
+		simulate_variable_submit_sm_response_times = Boolean
+				.valueOf(props.getProperty("SIMULATE_VARIABLE_SUBMIT_SM_RESPONSE_TIMES")).booleanValue();
 
 		if (isLoopback() && isEsme_to_esme()) {
-			logger.severe("It is not valid to enable both LOOPBACK and ESME_TO_ESME routing. Please deselect one or both of these options");
+			logger.severe(
+					"It is not valid to enable both LOOPBACK and ESME_TO_ESME routing. Please deselect one or both of these options");
 			throw new Exception();
 		}
 
@@ -320,6 +381,17 @@ public class SMPPSim {
 		percentageUndeliverable = getIntProperty(props, "PERCENTAGE_UNDELIVERABLE", 6);
 		percentageAccepted = getIntProperty(props, "PERCENTAGE_ACCEPTED", 2);
 		percentageRejected = getIntProperty(props, "PERCENTAGE_REJECTED", 2);
+		//
+		percentageReplaceSysErr = getIntProperty(props, "PERCENTAGE_REPLACE_SYS_ERR", 0);
+		percentageReplaceSuccess = getIntProperty(props, "PERCENTAGE_REPLACE_SUCCESS", 0);
+		percentageSubmitFailed = getIntProperty(props, "PERCENTAGE_SUBMIT_FAILED", 0);
+		percentageSubmitSuccess = getIntProperty(props, "PERCENTAGE_REPLACE_SUCCESS", 0);
+		
+		replaceSysErrThreshold = ((double) percentageReplaceSysErr / 100);
+		replaceSuccessThreshold = replaceSysErrThreshold + ((double) percentageReplaceSuccess / 100);
+		submitFailedThreshold = ((double) percentageSubmitFailed / 100);
+		submitSuccessThreshold = submitFailedThreshold + ((double) percentageSubmitSuccess / 100);
+		//
 		discardFromQueueAfter = getIntProperty(props, "DISCARD_FROM_QUEUE_AFTER", 60000);
 		delayed_iqueue_period = 1000 * getIntProperty(props, "DELAYED_INBOUND_QUEUE_PROCESSING_PERIOD", 60);
 		delayed_inbound_queue_max_attempts = getIntProperty(props, "DELAYED_INBOUND_QUEUE_MAX_ATTEMPTS", 10);
@@ -394,7 +466,8 @@ public class SMPPSim {
 
 		// USSD
 
-		deliver_sm_includes_ussd_service_op = Boolean.valueOf(props.getProperty("DELIVER_SM_INCLUDES_USSD_SERVICE_OP")).booleanValue();
+		deliver_sm_includes_ussd_service_op = Boolean.valueOf(props.getProperty("DELIVER_SM_INCLUDES_USSD_SERVICE_OP"))
+				.booleanValue();
 
 	}
 
@@ -460,11 +533,12 @@ public class SMPPSim {
 			logger.info("=  CALLBACK_PORT                           :" + callback_port);
 		}
 		if (dlr_tlr_required) {
-			logger.info("= Delivery receipts will always have optional parameter with TLV=" + dlr_tlv_tag + "/" + dlr_tlv_len + "/"
-					+ PduUtilities.byteArrayToHexString(dlr_tlv_value));
+			logger.info("= Delivery receipts will always have optional parameter with TLV=" + dlr_tlv_tag + "/"
+					+ dlr_tlv_len + "/" + PduUtilities.byteArrayToHexString(dlr_tlv_value));
 		}
 		if (dlr_opt_tlv_required) {
-			logger.info("= Delivery receipts will include standard optional parameters if client supports 3.4 or later");
+			logger.info(
+					"= Delivery receipts will include standard optional parameters if client supports 3.4 or later");
 		}
 		logger.info("=  ");
 		logger.info("==============================================================");
@@ -1175,5 +1249,21 @@ public class SMPPSim {
 
 	public static void setSimulate_variable_submit_sm_response_times(boolean simulateVariableSubmitSmResponseTimes) {
 		simulate_variable_submit_sm_response_times = simulateVariableSubmitSmResponseTimes;
+	}
+
+	public static double getSubmitFailedThreshold() {
+		return submitFailedThreshold;
+	}
+
+	public static void setSubmitFailedThreshold(double submitFailedThreshold) {
+		SMPPSim.submitFailedThreshold = submitFailedThreshold;
+	}
+
+	public static double getSubmitSuccessThreshold() {
+		return submitSuccessThreshold;
+	}
+
+	public static void setSubmitSuccessThreshold(double submitSuccessThreshold) {
+		SMPPSim.submitSuccessThreshold = submitSuccessThreshold;
 	}
 }

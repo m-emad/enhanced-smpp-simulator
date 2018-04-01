@@ -36,9 +36,9 @@ import java.util.*;
 /**
  * @author Martin Woolley
  *
- * Queue of MessageState objects
+ *         Queue of MessageState objects
  * 
- * Processed by the State Lifecycle Service
+ *         Processed by the State Lifecycle Service
  */
 public class OutboundQueue implements Runnable {
 
@@ -55,10 +55,17 @@ public class OutboundQueue implements Runnable {
 	}
 
 	public synchronized void addMessageState(MessageState message) throws OutboundQueueFullException {
-		logger.finest("OutboundQueue: adding object to queue<" + message.toString() + ">");
+		//logger.finest("OutboundQueue: adding object to queue<" + message.toString() + ">");
+		logger.finest("OutboundQueue: adding object to queue<" + ">");
+
 		if (queue.size() < smsc.getOutbound_queue_capacity()) {
 			queue.add(message);
-			logger.fine("Added object to OutboundQueue. Queue now contains " + queue.size() + " object(s)");
+			// logger.info("messageStat in adding message:
+			// "+message.getState());
+
+			// logger.info("get index of submit: "+i);
+			// logger.fine("Added object to OutboundQueue. Queue now contains "
+			// + queue.size() + " object(s)");
 			if (message.isIntermediate_notification_requested()) {
 				SubmitSM p = message.getPdu();
 				// delivery_receipt requested
@@ -67,8 +74,9 @@ public class OutboundQueue implements Runnable {
 			}
 			notifyAll();
 		} else
-			throw new OutboundQueueFullException("Request to add to OutboundQueue rejected as to do so would exceed max size of "
-					+ smsc.getOutbound_queue_capacity());
+			throw new OutboundQueueFullException(
+					"Request to add to OutboundQueue rejected as to do so would exceed max size of "
+							+ smsc.getOutbound_queue_capacity());
 	}
 
 	public synchronized void setResponseSent(MessageState m) throws MessageStateNotFoundException {
@@ -77,9 +85,10 @@ public class OutboundQueue implements Runnable {
 	}
 
 	public synchronized MessageState getMessageState(MessageState m) throws MessageStateNotFoundException {
-		//		logger.info("getMessageState:"+m.keyToString());
+		// logger.info("getMessageState:"+m.keyToString());
 		int i = queue.indexOf(m);
-		//		logger.info("queue pos="+i);
+		// logger.info("queue pos="+i+"\n queue length: "+queue.size());
+
 		if (i > -1) {
 			MessageState message = queue.get(i);
 			return message;
@@ -88,31 +97,77 @@ public class OutboundQueue implements Runnable {
 		}
 	}
 
-	public synchronized void updateMessageState(MessageState newMs) throws MessageStateNotFoundException {
-		int i = queue.indexOf(newMs);
-		if (i > -1) {
-			queue.set(i, newMs);
+	public synchronized MessageState getMessageState(int i) throws MessageStateNotFoundException {
+		// logger.info("queue pos="+i+"\n queue length: "+queue.size());
+
+		if (i < queue.size()) {
+			MessageState message = queue.get(i);
+			return message;
 		} else {
 			throw new MessageStateNotFoundException();
 		}
 	}
 
-	public MessageState queryMessageState(String message_id, int ton, int npi, String addr) throws MessageStateNotFoundException {
+	public synchronized String matchedMessageState(MessageState m) {
+		MessageState ms = null;
+		String id = null;
+		if (!queue.isEmpty() && queue.size() > 1) {
+			for (int i = 0; i < queue.size(); i++) {
+				if (queue.get(i).isEqual(m)) {
+					id = queue.get(i).getMessage_id();
+					removeMessageState(queue.get(i));
+					return id;
+				}
+			}
+		}
+		return id;
+	}
+
+	public synchronized void updateMessageState(MessageState newMs) throws MessageStateNotFoundException {
+		// logger.info("updateMessageState: "+queue.size());
+		int i = queue.indexOf(newMs);
+		if (i > -1) {
+			queue.set(i, newMs);
+			// logger.info("updateMessageState: "+queue.size());
+
+		} else {
+			throw new MessageStateNotFoundException();
+		}
+	}
+
+	public MessageState queryMessageState(String message_id, int ton, int npi, String addr)
+			throws MessageStateNotFoundException {
+		// logger.info("queryMessageStat");
 		MessageState m = new MessageState();
 		m.setMessage_id(message_id);
 		m.setSource_addr_ton(ton);
 		m.setSource_addr_npi(npi);
 		m.setSource_addr(addr);
+
 		return getMessageState(m);
 	}
 
 	public synchronized void removeMessageState(MessageState m) {
+		// logger.info("remove by msg stat :"+queue.size());
 		int i = queue.indexOf(m);
 		if (i > -1) {
 			MessageState message = queue.remove(i);
 			logger.fine("Removed object from OutboundQueue. Queue now contains " + queue.size() + " object(s)");
 		} else {
-			logger.warning("Attempt to remove non-existent object from OutboundQueue: " + m.toString());
+			//logger.warning("Attempt to remove non-existent object from OutboundQueue: " + m.toString());
+			logger.warning("Attempt to remove non-existent object from OutboundQueue: ");
+
+		}
+	}
+
+	public synchronized void removeMessageState(int index) {
+		// logger.info("remove by msg index :"+queue.size());
+
+		if (index < queue.size()) {
+			MessageState message = queue.remove(index);
+			logger.fine("Removed object from OutboundQueue. Queue now contains " + queue.size() + " object(s)");
+		} else {
+			logger.warning("Attempt to remove  object from OutboundQueue according to replace if persent flag");
 		}
 	}
 
@@ -151,6 +206,7 @@ public class OutboundQueue implements Runnable {
 		synchronized (this) {
 			while (smsc.isRunning() && isEmpty()) {
 				try {
+					// logger.info("processQueue: "+queue.size());
 					logger.info("Lifecycle Service: OutboundQueue is empty  - waiting");
 					wait();
 				} catch (InterruptedException e) {
@@ -163,7 +219,8 @@ public class OutboundQueue implements Runnable {
 			if (smsc.isRunning()) {
 				messages = getAllMessageStates();
 			}
-			// Can allow other threads to compete for lock now since working on array from this point
+			// Can allow other threads to compete for lock now since working on
+			// array from this point
 			notifyAll();
 		}
 		if (!smsc.isRunning()) {
@@ -178,9 +235,10 @@ public class OutboundQueue implements Runnable {
 				continue;
 			}
 			if (lcm.messageShouldBeDiscarded(m)) {
-				logger.finest("Disarding OutboundQueue message " + m.toString());
+				logger.info("Disarding OutboundQueue message ");
 				removeMessageState(m);
 			} else {
+				// logger.info("in else condition in outbound queue: ");
 				byte currentState = m.getState();
 				m = lcm.setState(m);
 			}
@@ -195,8 +253,8 @@ public class OutboundQueue implements Runnable {
 			} catch (InterruptedException e) {
 			}
 		} else {
-			logger
-					.warning("It's taking longer to process the OutboundQueue than MESSAGE_STATE_CHECK_FREQUENCY milliseconds. Recommend this value is increased");
+			logger.warning(
+					"It's taking longer to process the OutboundQueue than MESSAGE_STATE_CHECK_FREQUENCY milliseconds. Recommend this value is increased");
 		}
 	}
 

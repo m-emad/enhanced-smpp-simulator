@@ -139,6 +139,8 @@ public class DeliverSM extends Response implements Marshaller, Cloneable {
 	private short language_indicator;
 
 	private byte ussd_service_op;
+	
+	private long delayedTime;
 
 	// Vendor specific optional parameters
 
@@ -153,8 +155,16 @@ public class DeliverSM extends Response implements Marshaller, Cloneable {
 		// converted back to a message complete with null terminated strings
 		setCmd_len(0);
 		created = System.currentTimeMillis();
+		delayedTime = 0;
 	}
 
+	public void setDelayedTime (long t){
+		delayedTime = t;
+	}
+	
+	public long getDelayedTime(){
+		return delayedTime;
+	}
 	public DeliverSM(SubmitSM msg) {
 		setCommonAttributes(msg);
 		dest_addr_ton = msg.getSource_addr_ton();

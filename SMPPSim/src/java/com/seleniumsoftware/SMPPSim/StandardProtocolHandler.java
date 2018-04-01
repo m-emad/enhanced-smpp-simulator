@@ -31,6 +31,9 @@ import com.seleniumsoftware.SMPPSim.exceptions.*;
 import com.seleniumsoftware.SMPPSim.pdu.*;
 import com.seleniumsoftware.SMPPSim.pdu.util.PduUtilities;
 import com.seleniumsoftware.SMPPSim.util.*;
+
+import java.util.HashMap;
+import java.util.Map;
 import java.util.logging.*;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
@@ -41,6 +44,8 @@ public class StandardProtocolHandler {
 	Smsc smsc = Smsc.getInstance();
 
 	InboundQueue iqueue = InboundQueue.getInstance();
+
+	Map<MessageState, Integer> queueReplace = new HashMap<>();
 
 	Session session = new Session();
 
@@ -61,7 +66,7 @@ public class StandardProtocolHandler {
 	byte[] message;
 
 	Pattern address_range_regexp = null;
-	
+
 	private long delay;
 	private long delay_delta;
 
@@ -150,8 +155,7 @@ public class StandardProtocolHandler {
 			getGenericNakResponse(message, len, true);
 		}
 
-		if ((wasUnbindRequest()) || (wasInvalidBindState())
-				|| (failedAuthentication())) {
+		if ((wasUnbindRequest()) || (wasInvalidBindState()) || (failedAuthentication())) {
 			logger.finest("closing connection");
 			getSession().setBound(false);
 			connection.closeConnection();
@@ -177,23 +181,21 @@ public class StandardProtocolHandler {
 		smsc.writeDecodedSme(smppmsg.toString());
 		logger.info(" ");
 		// now make the response object
-		BindTransmitterResp smppresp = new BindTransmitterResp(smppmsg,
-				new String(smsc.getSMSC_SYSTEMID()));
+		BindTransmitterResp smppresp = new BindTransmitterResp(smppmsg, new String(smsc.getSMSC_SYSTEMID()));
 
 		// Validate the session state
 		if (session.isBound()) {
 			logger.warning("Session is already bound");
 			wasInvalidBindState = true;
-			resp_message = smppresp.errorResponse(smppresp.getCmd_id(),
-					PduConstants.ESME_RINVBNDSTS, smppresp.getSeq_no());
-			logPdu(": BIND_TRANSMITTER (ESME_RINVBNDSTS):", resp_message,
-					smppresp);
+			resp_message = smppresp.errorResponse(smppresp.getCmd_id(), PduConstants.ESME_RINVBNDSTS,
+					smppresp.getSeq_no());
+			logPdu(": BIND_TRANSMITTER (ESME_RINVBNDSTS):", resp_message, smppresp);
 			connection.writeResponse(resp_message);
 			smsc.writeDecodedSmppsim(smppresp.toString());
 			smsc.incBindTransmitterERR();
 			return;
 		}
-		
+
 		session.setInterface_version(smppmsg.getInterface_version());
 
 		// Authenticate the account details
@@ -222,11 +224,9 @@ public class StandardProtocolHandler {
 		if (!failedAuthentication)
 			resp_message = smppresp.marshall();
 		else
-			resp_message = smppresp.errorResponse(smppresp.getCmd_id(),
-					smppresp.getCmd_status(), smppresp.getSeq_no());
+			resp_message = smppresp.errorResponse(smppresp.getCmd_id(), smppresp.getCmd_status(), smppresp.getSeq_no());
 
-		LoggingUtilities.hexDump(": BIND_TRANSMITTER_RESP:", resp_message,
-				resp_message.length);
+		LoggingUtilities.hexDump(": BIND_TRANSMITTER_RESP:", resp_message, resp_message.length);
 
 		if (smsc.isDecodePdus())
 			LoggingUtilities.logDecodedPdu(smppresp);
@@ -252,15 +252,14 @@ public class StandardProtocolHandler {
 		logger.info(" ");
 
 		// now make the response object
-		BindReceiverResp smppresp = new BindReceiverResp(smppmsg, new String(
-				smsc.getSMSC_SYSTEMID()));
+		BindReceiverResp smppresp = new BindReceiverResp(smppmsg, new String(smsc.getSMSC_SYSTEMID()));
 
 		// Validate the session state
 		if (session.isBound()) {
 			logger.warning("Session is already bound");
 			wasInvalidBindState = true;
-			resp_message = smppresp.errorResponse(smppresp.getCmd_id(),
-					PduConstants.ESME_RINVBNDSTS, smppresp.getSeq_no());
+			resp_message = smppresp.errorResponse(smppresp.getCmd_id(), PduConstants.ESME_RINVBNDSTS,
+					smppresp.getSeq_no());
 			logPdu(": BIND_RECEIVER (ESME_RINVBNDSTS):", resp_message, smppresp);
 			smsc.incBindReceiverERR();
 			connection.writeResponse(resp_message);
@@ -282,8 +281,7 @@ public class StandardProtocolHandler {
 			try {
 				setAddressRangeRegExp(smppmsg.getAddress_range());
 			} catch (PatternSyntaxException e) {
-				logger
-						.warning("Invalid regular expression specified in BIND_RECEIVER address_range attribute");
+				logger.warning("Invalid regular expression specified in BIND_RECEIVER address_range attribute");
 				e.printStackTrace();
 			}
 			logger.info("New receiver session bound to SMPPSim");
@@ -307,13 +305,11 @@ public class StandardProtocolHandler {
 			smsc.incBindReceiverOK();
 			smsc.incRxBoundCount();
 		} else {
-			resp_message = smppresp.errorResponse(smppresp.getCmd_id(),
-					smppresp.getCmd_status(), smppresp.getSeq_no());
+			resp_message = smppresp.errorResponse(smppresp.getCmd_id(), smppresp.getCmd_status(), smppresp.getSeq_no());
 			smsc.incBindReceiverERR();
 		}
 
-		LoggingUtilities.hexDump(": BIND_RECEIVER_RESP:", resp_message,
-				resp_message.length);
+		LoggingUtilities.hexDump(": BIND_RECEIVER_RESP:", resp_message, resp_message.length);
 		if (smsc.isDecodePdus())
 			LoggingUtilities.logDecodedPdu(smppresp);
 		logger.info(" ");
@@ -336,17 +332,15 @@ public class StandardProtocolHandler {
 		logger.info(" ");
 
 		// now make the response object
-		BindTransceiverResp smppresp = new BindTransceiverResp(smppmsg,
-				new String(smsc.getSMSC_SYSTEMID()));
+		BindTransceiverResp smppresp = new BindTransceiverResp(smppmsg, new String(smsc.getSMSC_SYSTEMID()));
 
 		// Validate the session state
 		if (session.isBound()) {
 			logger.warning("Session is already bound");
 			wasInvalidBindState = true;
-			resp_message = smppresp.errorResponse(smppresp.getCmd_id(),
-					PduConstants.ESME_RALYBND, smppresp.getSeq_no());
-			logPdu(": BIND_TRANSCEIVER (ESME_RINVBNDSTS):", resp_message,
-					smppresp);
+			resp_message = smppresp.errorResponse(smppresp.getCmd_id(), PduConstants.ESME_RALYBND,
+					smppresp.getSeq_no());
+			logPdu(": BIND_TRANSCEIVER (ESME_RINVBNDSTS):", resp_message, smppresp);
 			connection.writeResponse(resp_message);
 			smsc.writeDecodedSmppsim(smppresp.toString());
 			smsc.incBindTransceiverERR();
@@ -367,8 +361,7 @@ public class StandardProtocolHandler {
 			try {
 				setAddressRangeRegExp(smppmsg.getAddress_range());
 			} catch (PatternSyntaxException e) {
-				logger
-						.warning("Invalid regular expression specified in BIND_TRANSCEIVER address_range attribute");
+				logger.warning("Invalid regular expression specified in BIND_TRANSCEIVER address_range attribute");
 				e.printStackTrace();
 			}
 			logger.info("New transceiver session bound to SMPPSim");
@@ -392,13 +385,11 @@ public class StandardProtocolHandler {
 			smsc.incTrxBoundCount();
 			smsc.incBindTransceiverOK();
 		} else {
-			resp_message = smppresp.errorResponse(smppresp.getCmd_id(),
-					smppresp.getCmd_status(), smppresp.getSeq_no());
+			resp_message = smppresp.errorResponse(smppresp.getCmd_id(), smppresp.getCmd_status(), smppresp.getSeq_no());
 			smsc.incBindTransceiverERR();
 		}
 
-		LoggingUtilities.hexDump(": BIND_TRANSCEIVER_RESP:", resp_message,
-				resp_message.length);
+		LoggingUtilities.hexDump(": BIND_TRANSCEIVER_RESP:", resp_message, resp_message.length);
 		if (smsc.isDecodePdus())
 			LoggingUtilities.logDecodedPdu(smppresp);
 		logger.info(" ");
@@ -411,7 +402,9 @@ public class StandardProtocolHandler {
 	void getSubmitSMResponse(byte[] message, int len) throws Exception {
 		LoggingUtilities.hexDump(": Standard SUBMIT_SM:", message, len);
 		byte[] resp_message;
+		boolean newSubmit = false;
 		SubmitSM smppmsg = new SubmitSM();
+
 		smppmsg.demarshall(message);
 		if (smsc.isDecodePdus())
 			LoggingUtilities.logDecodedPdu(smppmsg);
@@ -424,11 +417,10 @@ public class StandardProtocolHandler {
 
 		// Validate session
 		if ((!session.isBound()) || (!session.isTransmitter())) {
-			logger
-					.warning("Invalid bind state. Must be bound as transmitter for this PDU");
+			logger.warning("Invalid bind state. Must be bound as transmitter for this PDU");
 			wasInvalidBindState = true;
-			resp_message = smppresp.errorResponse(smppresp.getCmd_id(),
-					PduConstants.ESME_RINVBNDSTS, smppresp.getSeq_no());
+			resp_message = smppresp.errorResponse(smppresp.getCmd_id(), PduConstants.ESME_RINVBNDSTS,
+					smppresp.getSeq_no());
 			logPdu(":SUBMIT_SM_RESP (ESME_RINVBNDSTS):", resp_message, smppresp);
 			connection.writeResponse(resp_message);
 			smsc.writeDecodedSmppsim(smppresp.toString());
@@ -439,39 +431,66 @@ public class StandardProtocolHandler {
 		// Validation
 
 		if (smppmsg.getDestination_addr().equals("")) {
-			resp_message = smppresp.errorResponse(smppresp.getCmd_id(),
-					PduConstants.ESME_RINVDSTADR, smppresp.getSeq_no());
+			resp_message = smppresp.errorResponse(smppresp.getCmd_id(), PduConstants.ESME_RINVDSTADR,
+					smppresp.getSeq_no());
 			logPdu(":SUBMIT_SM_RESP (ESME_RINVDSTADR):", resp_message, smppresp);
 			connection.writeResponse(resp_message);
 			smsc.writeDecodedSmppsim(smppresp.toString());
 			smsc.incSubmitSmERR();
 			return;
 		}
-
-		// Try to add to the OutboundQueue for lifecycle tracking
-		MessageState m = null;
-		try {
-			m = new MessageState(smppmsg, smppresp.getMessage_id());
-			smsc.getOq().addMessageState(m);
-		} catch (OutboundQueueFullException e) {
-			logger.warning("OutboundQueue full.");
-			resp_message = smppresp.errorResponse(smppresp.getCmd_id(),
-					PduConstants.ESME_RMSGQFUL, smppresp.getSeq_no());
-			logPdu(":SUBMIT_SM_RESP (ESME_RMSGQFUL):", resp_message, smppresp);
+		double choice = Math.random();
+		if (choice < SMPPSim.getSubmitFailedThreshold()) {
+			resp_message = smppresp.errorResponse(smppresp.getCmd_id(), PduConstants.ESME_RSUBMITFAIL,
+					smppresp.getSeq_no());
+			logPdu(":SUBMIT_SM_RESP (ESME_RSUBMITFAIL):", resp_message, smppresp);
 			smsc.incSubmitSmERR();
 			connection.writeResponse(resp_message);
 			smsc.writeDecodedSmppsim(smppresp.toString());
 			return;
 		}
+		// Try to add to the OutboundQueue for lifecycle tracking
+
+		MessageState m = null;
+		int newIndex = -1;
+	//	try {
+			m = new MessageState(smppmsg, smppresp.getMessage_id());
+			if (smppmsg.getService_type() != null) {
+				m.setDest_addr(smppmsg.getDestination_addr());
+				m.setDest_addr_npi(smppmsg.getDest_addr_npi());
+				m.setDest_addr_ton(smppmsg.getDest_addr_ton());
+				m.setService_type(smppmsg.getService_type());
+			}
+			/*smsc.getOq().addMessageState(m);
+
+			// logger.info("in submit queue size is:"
+			// +smsc.getOq().queue.size());
+
+		} catch (OutboundQueueFullException e) {
+			logger.warning("OutboundQueue full.");
+			resp_message = smppresp.errorResponse(smppresp.getCmd_id(), PduConstants.ESME_RMSGQFUL,
+					smppresp.getSeq_no());
+			logPdu(":SUBMIT_SM_RESP (ESME_RMSGQFUL):", resp_message, smppresp);
+			smsc.incSubmitSmERR();
+			connection.writeResponse(resp_message);
+			smsc.writeDecodedSmppsim(smppresp.toString());
+			return;
+
+		}*/
+
 		// ....and turn it back into a byte array
 		resp_message = smppresp.marshall();
-
-		
+			
 		if (SMPPSim.isSimulate_variable_submit_sm_response_times()) {
 			try {
-				logger.info("Delaying response by "+delay+"ms");
+				logger.info("Delaying response by " + delay + "ms");
 				Thread.sleep(delay);
-				long per_message_delta = (int) (Math.random() * 500) - 250; // between -250 and 250 or thereabouts 
+				long per_message_delta = (int) (Math.random() * 500) - 250; // between
+																			// -250
+																			// and
+																			// 250
+																			// or
+																			// thereabouts
 				delay = delay + delay_delta + per_message_delta;
 				if (delay > MAX_DELAY) {
 					delay = MAX_DELAY;
@@ -485,7 +504,7 @@ public class StandardProtocolHandler {
 			} catch (InterruptedException e) {
 			}
 		}
-		
+
 		logPdu(":SUBMIT_SM_RESP:", resp_message, smppresp);
 		logger.info(" ");
 
@@ -493,28 +512,51 @@ public class StandardProtocolHandler {
 		logger.info("SubmitSM processing - response written to connection");
 		smsc.writeDecodedSmppsim(smppresp.toString());
 		// set messagestate responsesent = true
-		smsc.getOq().setResponseSent(m);
+	try {
+			m.setResponseSent(true);
+			smsc.getOq().addMessageState(m);
+	
+	} catch (OutboundQueueFullException e) {
+		logger.warning("OutboundQueue full.");
+		resp_message = smppresp.errorResponse(smppresp.getCmd_id(), PduConstants.ESME_RMSGQFUL,
+				smppresp.getSeq_no());
+		logPdu(":SUBMIT_SM_RESP (ESME_RMSGQFUL):", resp_message, smppresp);
+		smsc.incSubmitSmERR();
+		connection.writeResponse(resp_message);
+		smsc.writeDecodedSmppsim(smppresp.toString());
+		return;
+
+	}
+	
+		//smsc.getOq().setResponseSent(m);
 		smsc.incSubmitSmOK();
 
+		if (smppmsg.getReplace_if_present_flag() == 1) {
+			String msgId = smsc.getOq().matchedMessageState(m);
+			if (msgId != null) {
+				smsc.deleteFromDRQ(msgId);
+			}
+		}
+		
 		// If loopback is switched on, have an SMPPReceiver object deliver this
 		// message back to the client
 		if (SMPPSim.isLoopback()) {
 			try {
 				smsc.doLoopback(smppmsg);
 			} catch (InboundQueueFullException e) {
-				logger
-						.warning("Failed to create loopback DELIVER_SM because the Inbound Queue is full");
+				logger.warning("Failed to create loopback DELIVER_SM because the Inbound Queue is full");
 			}
 		} else {
 			if (SMPPSim.isEsme_to_esme()) {
 				try {
 					smsc.doEsmeToEsmeDelivery(smppmsg);
 				} catch (InboundQueueFullException e) {
-					logger
-							.warning("Failed to create ESME to ESME DELIVER_SM because the Inbound Queue is full");
+					logger.warning("Failed to create ESME to ESME DELIVER_SM because the Inbound Queue is full");
 				}
 			}
 		}
+		
+		// logger.info("in submit queue size is:" +smsc.getOq().queue.size());
 	}
 
 	void logPdu(String label, byte[] message, Pdu pdu) {
@@ -539,13 +581,11 @@ public class StandardProtocolHandler {
 
 		// Validate session
 		if ((!session.isBound()) || (!session.isTransmitter())) {
-			logger
-					.warning("Invalid bind state. Must be bound as transmitter for this PDU");
+			logger.warning("Invalid bind state. Must be bound as transmitter for this PDU");
 			wasInvalidBindState = true;
-			resp_message = smppresp.errorResponse(smppresp.getCmd_id(),
-					PduConstants.ESME_RINVBNDSTS, smppresp.getSeq_no());
-			logPdu(": Standard SUBMIT_MULTI (ESME_RINVBNDSTS):", resp_message,
-					smppresp);
+			resp_message = smppresp.errorResponse(smppresp.getCmd_id(), PduConstants.ESME_RINVBNDSTS,
+					smppresp.getSeq_no());
+			logPdu(": Standard SUBMIT_MULTI (ESME_RINVBNDSTS):", resp_message, smppresp);
 			connection.writeResponse(resp_message);
 			smsc.writeDecodedSmppsim(smppresp.toString());
 			smsc.incSubmitMultiERR();
@@ -555,10 +595,9 @@ public class StandardProtocolHandler {
 		// Validation
 
 		if (smppmsg.getSource_addr().equals("")) {
-			resp_message = smppresp.errorResponse(smppresp.getCmd_id(),
-					PduConstants.ESME_RINVSRCADR, smppresp.getSeq_no());
-			logPdu(": Standard SUBMIT_MULTI (ESME_RINVSRCADR):", resp_message,
-					smppresp);
+			resp_message = smppresp.errorResponse(smppresp.getCmd_id(), PduConstants.ESME_RINVSRCADR,
+					smppresp.getSeq_no());
+			logPdu(": Standard SUBMIT_MULTI (ESME_RINVSRCADR):", resp_message, smppresp);
 			smsc.incSubmitMultiERR();
 			connection.writeResponse(resp_message);
 			smsc.writeDecodedSmppsim(smppresp.toString());
@@ -566,10 +605,9 @@ public class StandardProtocolHandler {
 		}
 
 		if (smppmsg.getNumber_of_dests() < 1) {
-			resp_message = smppresp.errorResponse(smppresp.getCmd_id(),
-					PduConstants.ESME_RINVNUMDESTS, smppresp.getSeq_no());
-			logPdu(": Standard SUBMIT_MULTI (ESME_RINVNUMDESTS):",
-					resp_message, smppresp);
+			resp_message = smppresp.errorResponse(smppresp.getCmd_id(), PduConstants.ESME_RINVNUMDESTS,
+					smppresp.getSeq_no());
+			logPdu(": Standard SUBMIT_MULTI (ESME_RINVNUMDESTS):", resp_message, smppresp);
 			smsc.incSubmitMultiERR();
 			connection.writeResponse(resp_message);
 			smsc.writeDecodedSmppsim(smppresp.toString());
@@ -579,8 +617,7 @@ public class StandardProtocolHandler {
 		// ....and turn it back into a byte array
 		resp_message = smppresp.marshall();
 
-		LoggingUtilities.hexDump(":SUBMIT_MULTI_RESP:", resp_message,
-				resp_message.length);
+		LoggingUtilities.hexDump(":SUBMIT_MULTI_RESP:", resp_message, resp_message.length);
 		if (smsc.isDecodePdus())
 			LoggingUtilities.logDecodedPdu(smppresp);
 		logger.info(" ");
@@ -605,8 +642,8 @@ public class StandardProtocolHandler {
 		if (!session.isBound()) {
 			logger.warning("Invalid bind state. Must be bound for this PDU");
 			wasInvalidBindState = true;
-			resp_message = smppresp.errorResponse(smppresp.getCmd_id(),
-					PduConstants.ESME_RINVBNDSTS, smppresp.getSeq_no());
+			resp_message = smppresp.errorResponse(smppresp.getCmd_id(), PduConstants.ESME_RINVBNDSTS,
+					smppresp.getSeq_no());
 			logPdu(": UNBIND (ESME_RINVBNDSTS):", resp_message, smppresp);
 			connection.writeResponse(resp_message);
 			smsc.writeDecodedSmppsim(smppresp.toString());
@@ -621,8 +658,7 @@ public class StandardProtocolHandler {
 		if (session.isReceiver()) {
 			smsc.receiverUnbound();
 		}
-		logger.finest("Receiver:" + session.isReceiver() + ",Transmitter:"
-				+ session.isTransmitter());
+		logger.finest("Receiver:" + session.isReceiver() + ",Transmitter:" + session.isTransmitter());
 		if (session.isReceiver() && session.isTransmitter())
 			smsc.setTrxBoundCount(smsc.getTrxBoundCount() - 1);
 		else if (session.isReceiver())
@@ -634,8 +670,7 @@ public class StandardProtocolHandler {
 		session.setReceiver(false);
 		session.setTransmitter(false);
 		wasUnbindRequest = true;
-		LoggingUtilities.hexDump(": UNBIND_RESP", resp_message,
-				resp_message.length);
+		LoggingUtilities.hexDump(": UNBIND_RESP", resp_message, resp_message.length);
 		if (smsc.isDecodePdus())
 			LoggingUtilities.logDecodedPdu(smppresp);
 		logger.info(" ");
@@ -661,11 +696,10 @@ public class StandardProtocolHandler {
 
 		// Validate session
 		if ((!session.isBound()) || (!session.isTransmitter())) {
-			logger
-					.warning("Invalid bind state. Must be bound as transmitter for this PDU");
+			logger.warning("Invalid bind state. Must be bound as transmitter for this PDU");
 			wasInvalidBindState = true;
-			resp_message = smppresp.errorResponse(smppresp.getCmd_id(),
-					PduConstants.ESME_RINVBNDSTS, smppresp.getSeq_no());
+			resp_message = smppresp.errorResponse(smppresp.getCmd_id(), PduConstants.ESME_RINVBNDSTS,
+					smppresp.getSeq_no());
 			logPdu(": QUERY_SM (ESME_RINVBNDSTS):", resp_message, smppresp);
 			connection.writeResponse(resp_message);
 			smsc.writeDecodedSmppsim(smppresp.toString());
@@ -677,8 +711,8 @@ public class StandardProtocolHandler {
 		try {
 			smppresp = smsc.querySm(smppmsg, smppresp);
 		} catch (MessageStateNotFoundException e) {
-			resp_message = smppresp.errorResponse(smppresp.getCmd_id(),
-					PduConstants.ESME_RQUERYFAIL, smppresp.getSeq_no());
+			resp_message = smppresp.errorResponse(smppresp.getCmd_id(), PduConstants.ESME_RQUERYFAIL,
+					smppresp.getSeq_no());
 			logPdu(": QUERY_SM_RESP (ESME_RQUERYFAIL):", resp_message, smppresp);
 			smsc.incQuerySmERR();
 			connection.writeResponse(resp_message);
@@ -688,8 +722,7 @@ public class StandardProtocolHandler {
 		// ....and turn it back into a byte array
 
 		resp_message = smppresp.marshall();
-		LoggingUtilities.hexDump(":QUERY_SM_RESP:", resp_message,
-				resp_message.length);
+		LoggingUtilities.hexDump(":QUERY_SM_RESP:", resp_message, resp_message.length);
 
 		if (smsc.isDecodePdus())
 			LoggingUtilities.logDecodedPdu(smppresp);
@@ -715,13 +748,11 @@ public class StandardProtocolHandler {
 
 		// Validate session
 		if ((!session.isBound()) || (!session.isTransmitter())) {
-			logger
-					.warning("Invalid bind state. Must be bound as transmitter for this PDU");
+			logger.warning("Invalid bind state. Must be bound as transmitter for this PDU");
 			wasInvalidBindState = true;
-			resp_message = smppresp.errorResponse(smppresp.getCmd_id(),
-					PduConstants.ESME_RINVBNDSTS, smppresp.getSeq_no());
-			logPdu(": CANCEL_SM_RESP (ESME_RINVBNDSTS):", resp_message,
-					smppresp);
+			resp_message = smppresp.errorResponse(smppresp.getCmd_id(), PduConstants.ESME_RINVBNDSTS,
+					smppresp.getSeq_no());
+			logPdu(": CANCEL_SM_RESP (ESME_RINVBNDSTS):", resp_message, smppresp);
 			smsc.incCancelSmERR();
 			connection.writeResponse(resp_message);
 			smsc.writeDecodedSmppsim(smppresp.toString());
@@ -732,10 +763,9 @@ public class StandardProtocolHandler {
 		try {
 			smppresp = smsc.cancelSm(smppmsg, smppresp);
 		} catch (MessageStateNotFoundException e) {
-			resp_message = smppresp.errorResponse(smppresp.getCmd_id(),
-					PduConstants.ESME_RCANCELFAIL, smppresp.getSeq_no());
-			logPdu(": CANCEL_SM_RESP (ESME_RCANCELFAIL):", resp_message,
-					smppresp);
+			resp_message = smppresp.errorResponse(smppresp.getCmd_id(), PduConstants.ESME_RCANCELFAIL,
+					smppresp.getSeq_no());
+			logPdu(": CANCEL_SM_RESP (ESME_RCANCELFAIL):", resp_message, smppresp);
 			smsc.incCancelSmERR();
 			connection.writeResponse(resp_message);
 			smsc.writeDecodedSmppsim(smppresp.toString());
@@ -745,8 +775,7 @@ public class StandardProtocolHandler {
 		// ....and turn it back into a byte array
 
 		resp_message = smppresp.marshall();
-		LoggingUtilities.hexDump(":CANCEL_SM_RESP:", resp_message,
-				resp_message.length);
+		LoggingUtilities.hexDump(":CANCEL_SM_RESP:", resp_message, resp_message.length);
 		if (smsc.isDecodePdus())
 			LoggingUtilities.logDecodedPdu(smppresp);
 		logger.info(" ");
@@ -756,6 +785,7 @@ public class StandardProtocolHandler {
 	}
 
 	void getReplaceSMResponse(byte[] message, int len) throws Exception {
+		logger.info("in submit queue size is:" + smsc.getOq().queue.size());
 		LoggingUtilities.hexDump(": REPLACE_SM:", message, len);
 		ReplaceSM smppmsg = new ReplaceSM();
 		byte[] resp_message;
@@ -768,16 +798,23 @@ public class StandardProtocolHandler {
 		// now make the response object
 
 		ReplaceSMResp smppresp = new ReplaceSMResp(smppmsg);
-
+		double choice = Math.random();
+		if (choice < SMPPSim.getReplaceSysErrThreshold()) {
+			resp_message = smppresp.errorResponse(smppresp.getCmd_id(), PduConstants.ESME_RSYSERR,
+					smppresp.getSeq_no());
+			logPdu(": REPLACE_SM_RESP (ESME_RSYSERR):", resp_message, smppresp);
+			smsc.incReplaceSmERR();
+			connection.writeResponse(resp_message);
+			smsc.writeDecodedSmppsim(smppresp.toString());
+			return;
+		}
 		// Validate session
 		if ((!session.isBound()) || (!session.isTransmitter())) {
-			logger
-					.warning("Invalid bind state. Must be bound as transmitter for this PDU");
+			logger.warning("Invalid bind state. Must be bound as transmitter for this PDU");
 			wasInvalidBindState = true;
-			resp_message = smppresp.errorResponse(smppresp.getCmd_id(),
-					PduConstants.ESME_RINVBNDSTS, smppresp.getSeq_no());
-			logPdu(": REPLACE_SM_RESP (ESME_RINVBNDSTS):", resp_message,
-					smppresp);
+			resp_message = smppresp.errorResponse(smppresp.getCmd_id(), PduConstants.ESME_RINVBNDSTS,
+					smppresp.getSeq_no());
+			logPdu(": REPLACE_SM_RESP (ESME_RINVBNDSTS):", resp_message, smppresp);
 			smsc.incReplaceSmERR();
 			connection.writeResponse(resp_message);
 			smsc.writeDecodedSmppsim(smppresp.toString());
@@ -787,12 +824,12 @@ public class StandardProtocolHandler {
 		// Update the original message in the OutboundQueue (if it is still
 		// there)
 		try {
+			logger.info("in submit queue size is:" + smsc.getOq().queue.size());
 			smppresp = smsc.replaceSm(smppmsg, smppresp);
 		} catch (MessageStateNotFoundException e) {
-			resp_message = smppresp.errorResponse(smppresp.getCmd_id(),
-					PduConstants.ESME_RREPLACEFAIL, smppresp.getSeq_no());
-			logPdu(": REPLACE_SM_RESP (ESME_RREPLACEFAIL):", resp_message,
-					smppresp);
+			resp_message = smppresp.errorResponse(smppresp.getCmd_id(), PduConstants.ESME_RINVMSGID,
+					smppresp.getSeq_no());
+			logPdu(": REPLACE_SM_RESP (ESME_RINVMSGID):", resp_message, smppresp);
 			smsc.incReplaceSmERR();
 			connection.writeResponse(resp_message);
 			smsc.writeDecodedSmppsim(smppresp.toString());
@@ -801,8 +838,7 @@ public class StandardProtocolHandler {
 
 		// ....and turn it back into a byte array
 		resp_message = smppresp.marshall();
-		LoggingUtilities.hexDump(":REPLACE_SM_RESP:", resp_message,
-				resp_message.length);
+		LoggingUtilities.hexDump(":REPLACE_SM_RESP:", resp_message, resp_message.length);
 		if (smsc.isDecodePdus())
 			LoggingUtilities.logDecodedPdu(smppresp);
 		logger.info(" ");
@@ -827,10 +863,9 @@ public class StandardProtocolHandler {
 		if (!session.isBound()) {
 			logger.warning("Invalid bind state. Must be bound for this PDU");
 			wasInvalidBindState = true;
-			resp_message = smppresp.errorResponse(smppresp.getCmd_id(),
-					PduConstants.ESME_RINVBNDSTS, smppresp.getSeq_no());
-			logPdu(": ENQUIRE_LINK_RESP (ESME_RINVBNDSTS):", resp_message,
-					smppresp);
+			resp_message = smppresp.errorResponse(smppresp.getCmd_id(), PduConstants.ESME_RINVBNDSTS,
+					smppresp.getSeq_no());
+			logPdu(": ENQUIRE_LINK_RESP (ESME_RINVBNDSTS):", resp_message, smppresp);
 			smsc.incEnquireLinkERR();
 			connection.writeResponse(resp_message);
 			smsc.writeDecodedSmppsim(smppresp.toString());
@@ -840,8 +875,7 @@ public class StandardProtocolHandler {
 		// ....and turn it back into a byte array
 
 		resp_message = smppresp.marshall();
-		LoggingUtilities.hexDump(":ENQUIRE_LINK_RESP:", resp_message,
-				resp_message.length);
+		LoggingUtilities.hexDump(":ENQUIRE_LINK_RESP:", resp_message, resp_message.length);
 		if (smsc.isDecodePdus())
 			LoggingUtilities.logDecodedPdu(smppresp);
 		logger.info(" ");
@@ -866,11 +900,10 @@ public class StandardProtocolHandler {
 
 		// Validate session
 		if ((!session.isBound()) || (!session.isTransmitter())) {
-			logger
-					.warning("Invalid bind state. Must be bound as transmitter for this PDU");
+			logger.warning("Invalid bind state. Must be bound as transmitter for this PDU");
 			wasInvalidBindState = true;
-			resp_message = smppresp.errorResponse(smppresp.getCmd_id(),
-					PduConstants.ESME_RINVBNDSTS, smppresp.getSeq_no());
+			resp_message = smppresp.errorResponse(smppresp.getCmd_id(), PduConstants.ESME_RINVBNDSTS,
+					smppresp.getSeq_no());
 			logPdu(":DATA_SM_RESP (ESME_RINVBNDSTS):", resp_message, smppresp);
 			connection.writeResponse(resp_message);
 			smsc.writeDecodedSmppsim(smppresp.toString());
@@ -881,8 +914,8 @@ public class StandardProtocolHandler {
 		// Validation
 
 		if (smppmsg.getSource_addr().equals("")) {
-			resp_message = smppresp.errorResponse(smppresp.getCmd_id(),
-					PduConstants.ESME_RINVSRCADR, smppresp.getSeq_no());
+			resp_message = smppresp.errorResponse(smppresp.getCmd_id(), PduConstants.ESME_RINVSRCADR,
+					smppresp.getSeq_no());
 			logPdu(":DATA_SM_RESP (ESME_RINVSRCADR):", resp_message, smppresp);
 			connection.writeResponse(resp_message);
 			smsc.writeDecodedSmppsim(smppresp.toString());
@@ -891,8 +924,8 @@ public class StandardProtocolHandler {
 		}
 
 		if (smppmsg.getDestination_addr().equals("")) {
-			resp_message = smppresp.errorResponse(smppresp.getCmd_id(),
-					PduConstants.ESME_RINVDSTADR, smppresp.getSeq_no());
+			resp_message = smppresp.errorResponse(smppresp.getCmd_id(), PduConstants.ESME_RINVDSTADR,
+					smppresp.getSeq_no());
 			logPdu(":DATA_SM_RESP (ESME_RINVDSTADR):", resp_message, smppresp);
 			connection.writeResponse(resp_message);
 			smsc.writeDecodedSmppsim(smppresp.toString());
@@ -933,18 +966,15 @@ public class StandardProtocolHandler {
 			try {
 				smsc.doLoopback(smppmsg);
 			} catch (InboundQueueFullException e) {
-				logger
-						.warning("Failed to create loopback DELIVER_SM because the Inbound Queue is full");
+				logger.warning("Failed to create loopback DELIVER_SM because the Inbound Queue is full");
 			}
 		}
 	}
 
-	void getGenericNakResponse(byte[] message, int len, boolean unrecognised)
-			throws Exception {
+	void getGenericNakResponse(byte[] message, int len, boolean unrecognised) throws Exception {
 		byte[] resp_message;
 		logger.info(": GENERIC_NAK");
-		LoggingUtilities.hexDump("Message warranting GENERIC_NAK response:",
-				message, len);
+		LoggingUtilities.hexDump("Message warranting GENERIC_NAK response:", message, len);
 		GenericNak smppmsg = new GenericNak();
 		smppmsg.demarshall(message);
 		if (smsc.isDecodePdus())
@@ -960,8 +990,7 @@ public class StandardProtocolHandler {
 		// ....and turn it back into a byte array
 
 		resp_message = smppresp.marshall();
-		LoggingUtilities.hexDump(": returning GENERIC_NAK:", resp_message,
-				resp_message.length);
+		LoggingUtilities.hexDump(": returning GENERIC_NAK:", resp_message, resp_message.length);
 		if (smsc.isDecodePdus())
 			LoggingUtilities.logDecodedPdu(smppresp);
 		logger.info(" ");
@@ -971,8 +1000,7 @@ public class StandardProtocolHandler {
 	}
 
 	void setAddressRangeRegExp(String address_range) {
-		logger.info("StandardProtocolHandler: setting address range to "
-				+ address_range);
+		logger.info("StandardProtocolHandler: setting address range to " + address_range);
 		if (address_range == null || address_range.equals("*") || address_range.equals(""))
 			address_range = ".*";
 		address_range_regexp = Pattern.compile(address_range);
@@ -990,9 +1018,9 @@ public class StandardProtocolHandler {
 			smsc.incDeliverSmOK();
 		else
 			smsc.incDeliverSmERR();
-		
+
 		iqueue.deliveryResult(smppmsg.getSeq_no(), smppmsg.getCmd_status());
-		
+
 		logger.info(" ");
 	}
 

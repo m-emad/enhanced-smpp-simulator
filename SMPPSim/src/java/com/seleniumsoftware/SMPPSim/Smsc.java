@@ -45,7 +45,7 @@ import java.net.*;
 public class Smsc {
 
 	private static Smsc smsc;
-	
+
 	private boolean running = false;
 
 	private static Socket callback;
@@ -77,15 +77,15 @@ public class Smsc {
 	private MoService ds;
 
 	private Thread deliveryService;
-	
+
 	private Thread delayedInboundQueueThread;
 
 	private InboundQueue iq;
-	
+
 	private OutboundQueue oq;
-	
+
 	private DelayedDrQueue drq;
-	
+
 	private Thread drq_thread;
 
 	private LifeCycleManager lcm;
@@ -179,15 +179,15 @@ public class Smsc {
 	private long dataSmOK = 0;
 
 	private long dataSmERR = 0;
-	
+
 	private long outbindOK = 0;
-	
+
 	private long outbindERR = 0;
-	
+
 	// outbind
-	
+
 	boolean outbind_sent = false;
-	
+
 	private Smsc() {
 	}
 
@@ -200,11 +200,11 @@ public class Smsc {
 	public void start() throws Exception {
 
 		running = true;
-		
+
 		startTime = new Date();
 		SimpleDateFormat df = new SimpleDateFormat("EEE, d MMM yyyy HH:mm:ss");
 		startTimeString = df.format(startTime);
-		
+
 		message_id = SMPPSim.getStart_at();
 
 		if (SMPPSim.isCallback()) {
@@ -220,8 +220,7 @@ public class Smsc {
 		}
 
 		if (SMPPSim.isCaptureSmppsimBinary()) {
-			smppsimBinaryFile = new File(SMPPSim
-					.getCaptureSmppsimBinaryToFile());
+			smppsimBinaryFile = new File(SMPPSim.getCaptureSmppsimBinaryToFile());
 			smppsimBinaryFile.delete();
 			smppsimBinaryFile.createNewFile();
 			smppsimBinary = new FileOutputStream(smppsimBinaryFile);
@@ -235,8 +234,7 @@ public class Smsc {
 		}
 
 		if (SMPPSim.isCaptureSmppsimDecoded()) {
-			smppsimDecodedFile = new File(SMPPSim
-					.getCaptureSmppsimDecodedToFile());
+			smppsimDecodedFile = new File(SMPPSim.getCaptureSmppsimDecodedToFile());
 			smppsimDecodedFile.delete();
 			smppsimDecodedFile.createNewFile();
 			smppsimDecoded = new FileWriter(smppsimDecodedFile);
@@ -264,8 +262,7 @@ public class Smsc {
 			StandardConnectionHandler ch = (StandardConnectionHandler) c.newInstance();
 			ch.setSs(smpp_ss);
 			connectionHandlers[threadIndex] = ch;
-			smppThread[threadIndex] = new Thread(
-					connectionHandlers[threadIndex], "CH" + threadIndex);
+			smppThread[threadIndex] = new Thread(connectionHandlers[threadIndex], "CH" + threadIndex);
 			smppThread[threadIndex].start();
 			threadIndex++;
 		}
@@ -284,8 +281,7 @@ public class Smsc {
 			cthread[i].start();
 		}
 		if (SMPPSim.getDeliverMessagesPerMin() != 0) {
-			ds = new MoService(SMPPSim.getDeliverFile(), SMPPSim
-					.getDeliverMessagesPerMin());
+			ds = new MoService(SMPPSim.getDeliverFile(), SMPPSim.getDeliverMessagesPerMin());
 		}
 
 		// InboundQueue must always be running to allow for MO messages injected
@@ -296,8 +292,8 @@ public class Smsc {
 		// LifeCycleService (OutboundQueue) must always be running
 		lifecycleService = new Thread(oq);
 		lifecycleService.start();
-		
-		if (SMPPSim.getDelayReceiptsBy() > 0) {
+
+		if (SMPPSim.getDelayReceiptsBy() > 0 || SMPPSim.getDelayReceiptsBy() < 0) {
 			logger.info("Starting delivery receipts delay service....");
 			drq = DelayedDrQueue.getInstance();
 			drq_thread = new Thread(drq);
@@ -306,24 +302,24 @@ public class Smsc {
 	}
 
 	public boolean authenticate(String systemid, String password) {
-		
-		for (int i=0;i<SMPPSim.getSystemids().length;i++) {
+
+		for (int i = 0; i < SMPPSim.getSystemids().length; i++) {
 			if (SMPPSim.getSystemids()[i].equals(systemid))
 				if (SMPPSim.getPasswords()[i].equals(password))
 					return true;
 				else
 					return false;
 		}
-		return false;		
+		return false;
 	}
 
 	public boolean isValidSystemId(String systemid) {
-		
-		for (int i=0;i<SMPPSim.getSystemids().length;i++) {
+
+		for (int i = 0; i < SMPPSim.getSystemids().length; i++) {
 			if (SMPPSim.getSystemids()[i].equals(systemid))
 				return true;
 		}
-		return false;		
+		return false;
 	}
 
 	public void connectToCallbackServer(Object mutex) {
@@ -334,7 +330,7 @@ public class Smsc {
 
 	public synchronized static String getMessageID() {
 		long msgID = message_id++;
-		String msgIDstr = SMPPSim.getMid_prefix()+Long.toString(msgID);
+		String msgIDstr = SMPPSim.getMid_prefix() + Long.toString(msgID);
 		return msgIDstr;
 	}
 
@@ -343,12 +339,10 @@ public class Smsc {
 		return sequence_no;
 	}
 
-	public QuerySMResp querySm(QuerySM q, QuerySMResp r)
-			throws MessageStateNotFoundException {
+	public QuerySMResp querySm(QuerySM q, QuerySMResp r) throws MessageStateNotFoundException {
 		MessageState m = new MessageState();
-		m = oq.queryMessageState(q.getOriginal_message_id(), q
-				.getOriginating_ton(), q.getOriginating_npi(), q
-				.getOriginating_addr());
+		m = oq.queryMessageState(q.getOriginal_message_id(), q.getOriginating_ton(), q.getOriginating_npi(),
+				q.getOriginating_addr());
 		r.setMessage_state(m.getState());
 		if (m.getFinalDate() != null)
 			r.setFinal_date(m.getFinalDate().getDateString());
@@ -357,65 +351,71 @@ public class Smsc {
 		return r;
 	}
 
-	public CancelSMResp cancelSm(CancelSM q, CancelSMResp r)
-			throws MessageStateNotFoundException, InternalException {
+	public CancelSMResp cancelSm(CancelSM q, CancelSMResp r) throws MessageStateNotFoundException, InternalException {
 		MessageState m = new MessageState();
 		// messageid specified
 		if ((!q.getOriginal_message_id().equals(""))) {
-			m = oq.queryMessageState(q.getOriginal_message_id(), q
-					.getSource_addr_ton(), q.getSource_addr_npi(), q
-					.getSource_addr());
+			m = oq.queryMessageState(q.getOriginal_message_id(), q.getSource_addr_ton(), q.getSource_addr_npi(),
+					q.getSource_addr());
 			r.setSeq_no(q.getSeq_no());
 			oq.removeMessageState(m);
 			return r;
 		}
 		// messageid null (in PDU), service_type specified
-		if ((q.getOriginal_message_id().equals(""))
-				&& (!q.getService_type().equals(""))) {
-			int c = cancelMessages(q.getService_type(), q.getSource_addr_ton(),
-					q.getSource_addr_npi(), q.getSource_addr(), q
-							.getDest_addr_ton(), q.getDest_addr_npi(), q
-							.getDestination_addr());
+		if ((q.getOriginal_message_id().equals("")) && (!q.getService_type().equals(""))) {
+			int c = cancelMessages(q.getService_type(), q.getSource_addr_ton(), q.getSource_addr_npi(),
+					q.getSource_addr(), q.getDest_addr_ton(), q.getDest_addr_npi(), q.getDestination_addr());
 			logger.info(c + " messages cancelled");
 			r.setSeq_no(q.getSeq_no());
 			return r;
 		}
 		// messageid null (in PDU), service_type null also
-		if ((q.getOriginal_message_id().equals(""))
-				&& (q.getService_type().equals(""))) {
-			int c = cancelMessages(q.getSource_addr_ton(), q
-					.getSource_addr_npi(), q.getSource_addr(), q
-					.getDest_addr_ton(), q.getDest_addr_npi(), q
-					.getDestination_addr());
+		if ((q.getOriginal_message_id().equals("")) && (q.getService_type().equals(""))) {
+			int c = cancelMessages(q.getSource_addr_ton(), q.getSource_addr_npi(), q.getSource_addr(),
+					q.getDest_addr_ton(), q.getDest_addr_npi(), q.getDestination_addr());
 			logger.info(c + " messages cancelled");
 			r.setSeq_no(q.getSeq_no());
 			return r;
 		}
-		logger
-				.severe("Laws of physics violated. Well laws of logic anyway. Fell through conditions in smsc.cancelSm");
+		logger.severe("Laws of physics violated. Well laws of logic anyway. Fell through conditions in smsc.cancelSm");
 		logger.severe("Request is:" + q.toString());
 		throw new InternalException(
 				"Laws of physics violated. Well laws of logic anyway. Fell through conditions in smsc.cancelSm");
 	}
 
-	private int cancelMessages(String service_type, int source_addr_ton,
-			int source_addr_npi, String source_addr, int dest_addr_ton,
+	private int cancelMessages(String service_type, int source_addr_ton, int source_addr_npi, String source_addr,
+			int dest_addr_ton, int dest_addr_npi, String destination_addr) {
+
+		Object[] messages = oq.getAllMessageStates();
+		MessageState m;
+		int s = messages.length;
+		int c = 0;
+		for (int i = 0; i < s; i++) {
+			m = (MessageState) messages[i];
+			if (m.getPdu().getService_type().equals(service_type) && m.getPdu().getSource_addr_ton() == source_addr_ton
+					&& m.getPdu().getSource_addr_npi() == source_addr_npi
+					&& m.getPdu().getSource_addr().equals(source_addr) && m.getPdu().getDest_addr_ton() == dest_addr_ton
+					&& m.getPdu().getDest_addr_npi() == dest_addr_npi
+					&& m.getPdu().getDestination_addr().equals(destination_addr)) {
+				c++;
+				oq.removeMessageState(m);
+			}
+		}
+		return c;
+	}
+
+	private int cancelMessages(int source_addr_ton, int source_addr_npi, String source_addr, int dest_addr_ton,
 			int dest_addr_npi, String destination_addr) {
-
 		Object[] messages = oq.getAllMessageStates();
 		MessageState m;
 		int s = messages.length;
 		int c = 0;
 		for (int i = 0; i < s; i++) {
 			m = (MessageState) messages[i];
-			if (m.getPdu().getService_type().equals(service_type)
-					&& m.getPdu().getSource_addr_ton() == source_addr_ton
-					&& m.getPdu().getSource_addr_npi() == source_addr_npi
-					&& m.getPdu().getSource_addr().equals(source_addr)
-					&& m.getPdu().getDest_addr_ton() == dest_addr_ton
+			if (m.getPdu().getSource_addr_ton() == source_addr_ton && m.getPdu().getSource_addr_npi() == source_addr_npi
+					&& m.getPdu().getSource_addr().equals(source_addr) && m.getPdu().getDest_addr_ton() == dest_addr_ton
 					&& m.getPdu().getDest_addr_npi() == dest_addr_npi
-					&& m.getPdu().getDestination_addr()
-							.equals(destination_addr)) {
+					&& m.getPdu().getDestination_addr().equals(destination_addr)) {
 				c++;
 				oq.removeMessageState(m);
 			}
@@ -423,34 +423,9 @@ public class Smsc {
 		return c;
 	}
 
-	private int cancelMessages(int source_addr_ton, int source_addr_npi,
-			String source_addr, int dest_addr_ton, int dest_addr_npi,
-			String destination_addr) {
-		Object[] messages = oq.getAllMessageStates();
-		MessageState m;
-		int s = messages.length;
-		int c = 0;
-		for (int i = 0; i < s; i++) {
-			m = (MessageState) messages[i];
-			if (m.getPdu().getSource_addr_ton() == source_addr_ton
-					&& m.getPdu().getSource_addr_npi() == source_addr_npi
-					&& m.getPdu().getSource_addr().equals(source_addr)
-					&& m.getPdu().getDest_addr_ton() == dest_addr_ton
-					&& m.getPdu().getDest_addr_npi() == dest_addr_npi
-					&& m.getPdu().getDestination_addr()
-							.equals(destination_addr)) {
-				c++;
-				oq.removeMessageState(m);
-			}
-		}
-		return c;
-	}
-
-	public ReplaceSMResp replaceSm(ReplaceSM q, ReplaceSMResp r)
-			throws MessageStateNotFoundException {
+	public ReplaceSMResp replaceSm(ReplaceSM q, ReplaceSMResp r) throws MessageStateNotFoundException {
 		MessageState m = new MessageState();
-		m = oq.queryMessageState(q.getMessage_id(), q.getSource_addr_ton(), q
-				.getSource_addr_npi(), q.getSource_addr());
+		m = oq.queryMessageState(q.getMessage_id(), q.getSource_addr_ton(), q.getSource_addr_npi(), q.getSource_addr());
 		SubmitSM pdu = m.getPdu();
 		if (q.getSchedule_delivery_time() != null)
 			pdu.setSchedule_delivery_time(q.getSchedule_delivery_time());
@@ -462,7 +437,9 @@ public class Smsc {
 		pdu.setShort_message(q.getShort_message());
 		m.setPdu(pdu);
 		oq.updateMessageState(m);
-		logger.info("MessageState replaced with " + m.toString());
+		//logger.info("MessageState replaced with " + m.toString());
+		logger.info("MessageState replaced with " );
+
 		r.setSeq_no(q.getSeq_no());
 		return r;
 	}
@@ -485,23 +462,19 @@ public class Smsc {
 		logger.finest("Smsc: selectReceiver");
 		do {
 			receiverIndex = getNextReceiverIndex();
-			if ((connectionHandlers[receiverIndex].isBound())
-					&& (connectionHandlers[receiverIndex].isReceiver())
-					&& (connectionHandlers[receiverIndex]
-							.addressIsServicedByReceiver(address))) {
+			if ((connectionHandlers[receiverIndex].isBound()) && (connectionHandlers[receiverIndex].isReceiver())
+					&& (connectionHandlers[receiverIndex].addressIsServicedByReceiver(address))) {
 				gotReceiver = true;
 			} else {
 				receiversChecked++;
 			}
-		} while ((!gotReceiver)
-				&& (receiversChecked <= SMPPSim.getMaxConnectionHandlers()));
+		} while ((!gotReceiver) && (receiversChecked <= SMPPSim.getMaxConnectionHandlers()));
 
 		logger.finest("Smsc: Using SMPPReceiver object #" + receiverIndex);
 		if (gotReceiver) {
 			return connectionHandlers[receiverIndex];
 		} else {
-			logger.warning("Smsc: No receiver for message address to "
-					+ address);
+			logger.warning("Smsc: No receiver for message address to " + address);
 			return null;
 		}
 	}
@@ -524,10 +497,10 @@ public class Smsc {
 
 	public void outbind() {
 		try {
-			Socket s = new Socket(SMPPSim.getEsme_ip_address(),SMPPSim.getEsme_port());
+			Socket s = new Socket(SMPPSim.getEsme_ip_address(), SMPPSim.getEsme_port());
 			OutputStream out = s.getOutputStream();
-			Outbind outbind = new Outbind(SMPPSim.getEsme_systemid(),SMPPSim.getEsme_password());
-			byte [] outbind_bytes = outbind.marshall();
+			Outbind outbind = new Outbind(SMPPSim.getEsme_systemid(), SMPPSim.getEsme_password());
+			byte[] outbind_bytes = outbind.marshall();
 			LoggingUtilities.hexDump(": OUTBIND:", outbind_bytes, outbind_bytes.length);
 			if (smsc.isDecodePdus())
 				LoggingUtilities.logDecodedPdu(outbind);
@@ -538,21 +511,28 @@ public class Smsc {
 			outbindOK++;
 			outbind_sent = true;
 		} catch (Exception e) {
-			logger.warning("Attempted outbind failed. Check IP address and port are correct for outbind. Exception of type "+e.getClass().getName());
+			logger.warning(
+					"Attempted outbind failed. Check IP address and port are correct for outbind. Exception of type "
+							+ e.getClass().getName());
 			outbindERR++;
 		}
 	}
-	
-	public synchronized void prepareDeliveryReceipt(SubmitSM smppmsg, String messageID, byte state, int sub, int dlvrd, int err) {
-		int esm_class=4;
+
+	public synchronized void prepareDeliveryReceipt(SubmitSM smppmsg, String messageID, byte state, int sub, int dlvrd,
+			int err) {
+		// logger.info("in prepareDeliveryReceipt start:
+		// "+getOq().queue.size());
+		int esm_class = 4;
 		if (state == PduConstants.ENROUTE) {
 			esm_class = 32;
 		}
-		DeliveryReceipt receipt = new DeliveryReceipt(smppmsg,esm_class,messageID,state);
+		DeliveryReceipt receipt = new DeliveryReceipt(smppmsg, esm_class, messageID, state);
 		Date rightNow = new Date();
 		SimpleDateFormat df = new SimpleDateFormat("yyMMddHHmm");
 		String dateAsString = df.format(rightNow);
 		receipt.setMessage_id(messageID);
+		if (smppmsg.getService_type() != null)
+			receipt.setService_type(smppmsg.getService_type());
 		String s = "000" + sub;
 		int l = s.length();
 		receipt.setSub(s.substring(l - 3, l));
@@ -562,32 +542,30 @@ public class Smsc {
 		receipt.setSubmit_date(dateAsString);
 		receipt.setDone_date(dateAsString);
 		String err_string = "000" + err;
-		err_string = err_string.substring(err_string.length()-3,err_string.length());
+		err_string = err_string.substring(err_string.length() - 3, err_string.length());
 		receipt.setErr(err_string);
-		
+
 		if (SMPPSim.isDlr_tlr_required()) {
 			receipt.addVsop(SMPPSim.getDlr_tlv_tag(), SMPPSim.getDlr_tlv_len(), SMPPSim.getDlr_tlv_value());
 		}
-		
-		logger.finest("sm_len=" + smppmsg.getSm_length() + ",message="
-				+ smppmsg.getShort_message());
+
+		logger.finest("sm_len=" + smppmsg.getSm_length() + ",message=" + smppmsg.getShort_message());
 		if (smppmsg.getSm_length() > 19)
-			receipt.setText(new String(smppmsg.getShort_message(),0, 20));
-		else
-			if (smppmsg.getSm_length() > 0)
-				receipt.setText(new String(smppmsg.getShort_message(),0,
-						smppmsg.getSm_length()));
+			receipt.setText(new String(smppmsg.getShort_message(), 0, 20));
+		else if (smppmsg.getSm_length() > 0)
+			receipt.setText(new String(smppmsg.getShort_message(), 0, smppmsg.getSm_length()));
 		receipt.setDeliveryReceiptMessage(state);
 		try {
-			if (SMPPSim.getDelayReceiptsBy() <= 0) {
+			if (SMPPSim.getDelayReceiptsBy() == 0) {
 				iq.addMessage(receipt);
 			} else {
 				drq.delayDeliveryReceipt(receipt);
 			}
 		} catch (InboundQueueFullException e) {
-			logger
-					.warning("Failed to create delivery receipt because the Inbound Queue is full");
+			logger.warning("Failed to create delivery receipt because the Inbound Queue is full");
 		}
+		// logger.info("in prepareDeliveryReceipt end: "+getOq().queue.size());
+
 	}
 
 	private synchronized int getNextReceiverIndex() {
@@ -599,13 +577,11 @@ public class Smsc {
 		return receiverIndex;
 	}
 
-	public byte[] processDeliveryReceipt(DeliveryReceipt smppmsg)
-			throws Exception {
+	public byte[] processDeliveryReceipt(DeliveryReceipt smppmsg) throws Exception {
 		byte[] message;
 		logger.finest(": DELIVER_SM (receipt)");
 		message = smppmsg.marshall();
-		LoggingUtilities.hexDump("DELIVER_SM (receipt):", message,
-				message.length);
+		LoggingUtilities.hexDump("DELIVER_SM (receipt):", message, message.length);
 		return message;
 	}
 
@@ -678,6 +654,19 @@ public class Smsc {
 		if (SMPPSim.isCaptureSmppsimDecoded()) {
 			smppsimDecoded.write(response + "\n");
 			smppsimDecoded.flush();
+		}
+	}
+
+	public void deleteFromDRQ(String messageId) {
+		if (!drq.dr_queue_pdus.isEmpty() && drq.dr_queue_pdus.size() > 0) {
+			for (int i = 0; i < drq.dr_queue_pdus.size(); i++) {
+
+				if (drq.dr_queue_pdus.get(i).getMessage_id() == messageId) {
+					drq.dr_queue_pdus.remove(i);
+
+					break;
+				}
+			}
 		}
 	}
 
@@ -1219,8 +1208,7 @@ public class Smsc {
 		return callback_server_online;
 	}
 
-	public static synchronized void setCallback_server_online(
-			boolean callback_server_online) {
+	public static synchronized void setCallback_server_online(boolean callback_server_online) {
 		smsc.callback_server_online = callback_server_online;
 	}
 
@@ -1236,8 +1224,7 @@ public class Smsc {
 		return callback_stream;
 	}
 
-	public static synchronized void setCallback_stream(
-			OutputStream callback_stream) {
+	public static synchronized void setCallback_stream(OutputStream callback_stream) {
 		smsc.callback_stream = callback_stream;
 	}
 
